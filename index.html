@@ -110,14 +110,16 @@ body {
 		</div>
 
 		<script>
-// index.wasm(38MB)은 GitHub 웹 업로드 25MB 제한 때문에 2개로 나눠 올렸어요.
-// 엔진이 index.wasm을 달라고 하면 두 조각을 받아서 하나로 합쳐서 돌려줘요.
+// 캐시 무력화 + wasm 분할 로드 (v4 빌드).
+// - index.pck는 브라우저가 옛날 파일을 10분간 갖고 있는 것을 막기 위해 ?v=4를 붙여 새로 받는다.
+// - index.wasm(38MB)은 GitHub 웹 업로드 25MB 제한 때문에 2개로 나눠 올렸고,
+//   엔진이 index.wasm을 달라고 하면 두 조각을 받아서 하나로 합쳐서 돌려준다.
 (function () {
   var _fetch = window.fetch.bind(window);
   window.fetch = function (url, opts) {
     var u = String(url);
-    if (u.indexOf('index.wasm') !== -1 && u.indexOf('.part') === -1) {
-      return Promise.all([_fetch('index.wasm.part00'), _fetch('index.wasm.part01')])
+    if (u.indexOf('index.wasm') !== -1 && u.indexOf('.part') === -1 && u.indexOf('?v=') === -1) {
+      return Promise.all([_fetch('index.wasm.part00?v=v4', opts), _fetch('index.wasm.part01?v=v4', opts)])
         .then(function (rs) { return Promise.all(rs.map(function (r) { return r.arrayBuffer(); })); })
         .then(function (bufs) {
           var total = bufs.reduce(function (s, b) { return s + b.byteLength; }, 0);
@@ -127,13 +129,16 @@ body {
           return new Response(out.buffer, { headers: { 'Content-Type': 'application/wasm' } });
         });
     }
+    if (u.indexOf('index.pck') !== -1 && u.indexOf('?v=') === -1) {
+      return _fetch(u + '?v=v4', opts);
+    }
     return _fetch(url, opts);
   };
 })();
 </script>
-		<script src="index.js"></script>
+		<script src="index.js?v=v4"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":1196576,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":1226112,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
